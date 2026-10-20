@@ -1,0 +1,1941 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AETHERIS v5.1 — Echte Live-Wechselkurse</title>
+    <meta name="description" content="Echter Live-Wechselkursrechner mit EZB-Daten. Eigene Währungen erstellen, Stückelungen verwalten.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0e17;
+            --bg-elevated: #111827;
+            --bg-card: #1a2332;
+            --bg-hover: #1f2a3d;
+            --border: #2a3548;
+            --border-focus: #3b82f6;
+            --text: #e5e7eb;
+            --text-dim: #9ca3af;
+            --text-faint: #6b7280;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --accent-glow: rgba(59, 130, 246, 0.2);
+            --green: #10b981;
+            --amber: #f59e0b;
+            --red: #ef4444;
+            --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { font-size: 15px; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-ui);
+            min-height: 100vh;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+        .hidden { display: none !important; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px 24px 80px; }
+
+        /* Header */
+        .app-header {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            flex-wrap: wrap; gap: 16px; margin-bottom: 24px; padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .brand h1 {
+            font-size: 1.6rem; font-weight: 800; letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .brand p { font-size: 0.85rem; color: var(--text-dim); margin-top: 4px; max-width: 560px; }
+        .header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+        /* Status */
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 8px 14px; border-radius: 999px;
+            font-size: 0.78rem; font-weight: 600; font-family: var(--font-mono);
+            border: 1px solid var(--border); background: var(--bg-elevated);
+            color: var(--text-dim); transition: all 0.3s;
+        }
+        .status-badge.live { border-color: var(--green); color: var(--green); background: rgba(16, 185, 129, 0.08); }
+        .status-badge.stale { border-color: var(--amber); color: var(--amber); background: rgba(245, 158, 11, 0.08); }
+        .status-badge.offline { border-color: var(--red); color: var(--red); background: rgba(239, 68, 68, 0.08); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+        .status-badge.live .status-dot { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 9px 16px; border-radius: var(--radius-sm);
+            font-family: var(--font-ui); font-size: 0.82rem; font-weight: 600;
+            border: 1px solid var(--border); background: var(--bg-elevated);
+            color: var(--text); cursor: pointer; transition: all 0.15s;
+            white-space: nowrap; text-decoration: none;
+        }
+        .btn:hover { background: var(--bg-hover); border-color: var(--text-faint); }
+        .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+        .btn-success { background: var(--green); border-color: var(--green); color: #fff; }
+        .btn-success:hover { background: #059669; border-color: #059669; }
+        .btn-danger { background: transparent; border-color: var(--red); color: var(--red); }
+        .btn-danger:hover { background: var(--red); color: #fff; }
+        .btn-sm { padding: 6px 10px; font-size: 0.75rem; }
+        .btn-icon { padding: 8px; width: 36px; height: 36px; }
+
+        /* Tabs */
+        .tabs {
+            display: flex; gap: 4px; margin-bottom: 24px;
+            overflow-x: auto; padding-bottom: 2px; border-bottom: 1px solid var(--border);
+        }
+        .tab {
+            padding: 10px 18px; background: transparent; border: none;
+            border-bottom: 2px solid transparent; color: var(--text-dim);
+            font-family: var(--font-ui); font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; transition: all 0.15s; white-space: nowrap; margin-bottom: -1px;
+        }
+        .tab:hover { color: var(--text); }
+        .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
+
+        /* Panels */
+        .panel { display: none; animation: fadeIn 0.2s ease-out; }
+        .panel.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 20px; margin-bottom: 20px;
+        }
+        .card-header {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            flex-wrap: wrap; gap: 12px; margin-bottom: 16px;
+            padding-bottom: 14px; border-bottom: 1px solid var(--border);
+        }
+        .card-title { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .card-title::before { content: ''; width: 4px; height: 16px; border-radius: 2px; background: var(--accent); }
+        .card-subtitle { font-size: 0.8rem; color: var(--text-dim); margin-top: 2px; }
+
+        /* === MATRIX (Basis-Konzept) === */
+        .matrix-base {
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+            padding: 16px; background: var(--bg-elevated);
+            border: 1px solid var(--accent); border-radius: var(--radius-sm);
+            margin-bottom: 16px;
+        }
+        .matrix-base-label { font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+        .matrix-base .select { min-width: 220px; }
+        .matrix-base .input {
+            font-size: 1.2rem; font-weight: 700; color: var(--accent);
+            text-align: right; max-width: 240px;
+        }
+        .matrix-base .symbol { font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-faint); }
+
+        .matrix-list { display: flex; flex-direction: column; gap: 8px; }
+        .matrix-row {
+            display: grid;
+            grid-template-columns: minmax(200px, 1.5fr) minmax(180px, 1fr) 100px 80px;
+            gap: 10px; align-items: center; padding: 12px;
+            background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+        }
+        .matrix-row.is-base { border-color: var(--accent); background: rgba(59, 130, 246, 0.05); }
+        .matrix-row .rate-tag {
+            font-family: var(--font-mono); font-size: 0.7rem;
+            color: var(--text-faint); text-align: center; padding: 4px 6px;
+            background: var(--bg); border-radius: 4px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .matrix-row .output-display {
+            font-family: var(--font-mono); font-size: 1.05rem; font-weight: 600;
+            color: var(--text); text-align: right; padding: 10px 12px;
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); min-height: 42px;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .matrix-row .output-display.empty { color: var(--text-faint); }
+
+        /* Inputs */
+        .input, .select {
+            width: 100%; padding: 10px 12px;
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); color: var(--text);
+            font-family: var(--font-mono); font-size: 0.9rem;
+            transition: border-color 0.15s;
+        }
+        .input:focus, .select:focus {
+            outline: none; border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+        .input[readonly] { background: var(--bg-elevated); color: var(--text-dim); cursor: not-allowed; }
+        .input.amount {
+            font-size: 1.05rem; font-weight: 600; text-align: right;
+            color: var(--accent); padding-right: 50px;
+        }
+        .amount-wrap { position: relative; }
+        .amount-symbol {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            font-size: 0.8rem; color: var(--text-faint); pointer-events: none;
+        }
+
+        /* Form */
+        .form-group { margin-bottom: 16px; }
+        .form-label {
+            display: block; font-size: 0.75rem; font-weight: 600;
+            color: var(--text-dim); margin-bottom: 6px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .form-label .req { color: var(--red); }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        .peg-box {
+            display: flex; align-items: center; gap: 8px;
+            flex-wrap: wrap; padding: 14px;
+            background: var(--bg); border: 1px dashed var(--border);
+            border-radius: var(--radius-sm);
+        }
+        .peg-box .fixed { font-weight: 700; font-size: 1.1rem; color: var(--text); }
+        .peg-box .select { min-width: 180px; max-width: 260px; flex: 0 1 260px; }
+        .peg-box .input { min-width: 120px; max-width: 160px; text-align: right; font-weight: 700; color: var(--amber); }
+
+        /* Builder Table */
+        .builder-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .builder-table th {
+            text-align: left; font-size: 0.7rem; font-weight: 600;
+            color: var(--text-faint); text-transform: uppercase;
+            letter-spacing: 0.5px; padding: 8px 6px;
+            border-bottom: 1px solid var(--border);
+        }
+        .builder-table td { padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .builder-table tr:last-child td { border-bottom: none; }
+
+        /* Cards Grid */
+        .cards-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 14px;
+        }
+        .denom-card {
+            background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-sm); padding: 16px;
+            transition: border-color 0.15s, transform 0.15s;
+        }
+        .denom-card:hover { border-color: var(--text-faint); transform: translateY(-2px); }
+        .denom-card.coin { border-left: 3px solid var(--amber); }
+        .denom-card.note { border-left: 3px solid var(--green); }
+        .denom-glyph {
+            width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; font-size: 1.1rem; font-weight: 800;
+            font-family: var(--font-mono); flex-shrink: 0;
+        }
+        .coin .denom-glyph { background: rgba(245, 158, 11, 0.15); color: var(--amber); }
+        .note .denom-glyph { background: rgba(16, 185, 129, 0.15); color: var(--green); border-radius: var(--radius-sm); }
+
+        /* Table */
+        .table-scroll { max-height: 560px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .data-table th {
+            position: sticky; top: 0; background: var(--bg-elevated);
+            padding: 10px 12px; text-align: left; font-size: 0.7rem;
+            font-weight: 700; color: var(--text-faint); text-transform: uppercase;
+            letter-spacing: 0.5px; border-bottom: 1px solid var(--border);
+            z-index: 2; cursor: pointer; user-select: none;
+        }
+        .data-table th:hover { color: var(--text); }
+        .data-table td {
+            padding: 10px 12px; border-bottom: 1px solid var(--border);
+            font-family: var(--font-mono); font-size: 0.82rem;
+        }
+        .data-table tr:hover { background: var(--bg-hover); }
+        .data-table tr:last-child td { border-bottom: none; }
+
+        /* Badges */
+        .badge {
+            display: inline-block; padding: 2px 8px; border-radius: 999px;
+            font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono);
+            text-transform: uppercase; letter-spacing: 0.3px;
+        }
+        .badge-fiat { background: rgba(59, 130, 246, 0.15); color: var(--accent); }
+        .badge-hist { background: rgba(245, 158, 11, 0.15); color: var(--amber); }
+        .badge-custom { background: rgba(16, 185, 129, 0.15); color: var(--green); }
+        .badge-pegged { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+
+        /* Toast */
+        .toast-container {
+            position: fixed; bottom: 20px; right: 20px;
+            display: flex; flex-direction: column; gap: 8px;
+            z-index: 1000; max-width: 360px;
+        }
+        .toast {
+            padding: 12px 16px; background: var(--bg-elevated);
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+            font-size: 0.85rem; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            animation: slideIn 0.2s ease-out; display: flex; align-items: flex-start; gap: 10px;
+        }
+        .toast.success { border-left: 3px solid var(--green); }
+        .toast.error { border-left: 3px solid var(--red); }
+        .toast.info { border-left: 3px solid var(--accent); }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+        /* Dialog */
+        dialog {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 24px; color: var(--text);
+            max-width: 420px; width: 90vw;
+        }
+        dialog::backdrop { background: rgba(0,0,0,0.6); }
+        dialog h3 { margin-bottom: 12px; font-size: 1.05rem; }
+        dialog p { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 16px; }
+        dialog .dialog-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+        /* Empty state */
+        .empty {
+            padding: 40px 20px; text-align: center; color: var(--text-faint);
+            font-size: 0.85rem; border: 1px dashed var(--border);
+            border-radius: var(--radius-sm);
+        }
+        .empty .btn { margin-top: 12px; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            html { font-size: 14px; }
+            .container { padding: 12px 12px 60px; }
+            .matrix-row { grid-template-columns: 1fr; gap: 6px; }
+            .matrix-row .rate-tag { display: none; }
+            .form-row { grid-template-columns: 1fr; }
+            .header-actions { width: 100%; }
+            .header-actions .btn { flex: 1; justify-content: center; }
+            .matrix-base { flex-direction: column; align-items: stretch; }
+            .matrix-base .select, .matrix-base .input { max-width: none; }
+        }
+
+        @media (max-width: 900px) {
+            .foundry-grid { grid-template-columns: 1fr !important; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <header class="app-header">
+        <div class="brand">
+            <h1>AETHERIS <span style="font-size:0.7em; font-weight:500; opacity:0.6;">v5.1</span></h1>
+            <p>Echte Live-Wechselkurse (EZB/Frankfurter), alle ISO-4217-Währungen, eigene Währungen mit Stückelungen. Keine statischen Schummler-Kurse.</p>
+        </div>
+        <div class="header-actions">
+            <span id="status-badge" class="status-badge offline" role="status" aria-live="polite">
+                <span class="status-dot"></span>
+                <span id="status-text">Initialisiere…</span>
+            </span>
+            <button class="btn" id="btn-sync" onclick="manualSync()" title="Live-Kurse jetzt abrufen">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                Sync
+            </button>
+            <button class="btn" onclick="exportData()" title="Daten als JSON exportieren">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                Export
+            </button>
+            <button class="btn" onclick="document.getElementById('import-file').click()" title="Daten aus JSON importieren">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                Import
+            </button>
+            <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+        </div>
+    </header>
+
+    <nav class="tabs" role="tablist">
+        <button class="tab active" role="tab" aria-selected="true" data-tab="matrix" onclick="switchTab('matrix')">Umrechner</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="foundry" onclick="switchTab('foundry')">Eigene Währung</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="inspector" onclick="switchTab('inspector')">Stückelungen</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="archive" onclick="switchTab('archive')">Währungsarchiv</button>
+    </nav>
+
+    <!-- TAB 1: MATRIX -->
+    <div id="panel-matrix" class="panel active" role="tabpanel">
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Multi-Währungs-Umrechner</div>
+                    <div class="card-subtitle">Wähle unten die Basiswährung, gib einen Betrag ein — alle anderen Zeilen werden automatisch mit Live-Kursen umgerechnet.</div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-primary btn-sm" onclick="openAddCurrencyDialog()">+ Währung hinzufügen</button>
+                </div>
+            </div>
+
+            <!-- Basis-Eingabe -->
+            <div id="matrix-base-container" class="matrix-base hidden">
+                <span class="matrix-base-label">Basis</span>
+                <select id="matrix-base-currency" class="select" onchange="onBaseCurrencyChange(this.value)" aria-label="Basiswährung"></select>
+                <span class="matrix-base-label">Betrag</span>
+                <input type="text" inputmode="decimal" id="matrix-base-amount" class="input" placeholder="0,00" oninput="onBaseAmountInput(this.value)" aria-label="Betrag in Basiswährung">
+                <span class="symbol" id="matrix-base-symbol"></span>
+            </div>
+
+            <!-- Basis-Auswahl leer -->
+            <div id="matrix-empty" class="empty">
+                <p style="margin-bottom:8px;">Noch keine Währungen hinzugefügt.</p>
+                <p style="font-size:0.8rem;margin-bottom:16px;">Füge mindestens eine Währung hinzu, um loszulegen. Die erste hinzugefügte Währung wird automatisch zur Basis.</p>
+                <button class="btn btn-primary" onclick="openAddCurrencyDialog()">Erste Währung hinzufügen</button>
+            </div>
+
+            <!-- Liste der konfigurierten Währungen -->
+            <div id="matrix-list" class="matrix-list"></div>
+        </div>
+    </div>
+
+    <!-- TAB 2: FOUNDRY -->
+    <div id="panel-foundry" class="panel" role="tabpanel">
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Eigene Währung erstellen</div>
+                    <div class="card-subtitle">Lege eine eigene Währung mit festem Ankerkurs und Stückelungen an. Sie wird sofort in den Umrechner integriert.</div>
+                </div>
+                <button class="btn btn-success btn-sm" onclick="saveCurrency()">Währung speichern</button>
+            </div>
+            <div class="foundry-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+                <div>
+                    <h3 style="font-size:0.85rem;font-weight:700;color:var(--accent);margin-bottom:12px;">[1] Basisdaten & Ankerkurs</h3>
+                    <div class="form-group">
+                        <label class="form-label" for="cust-name">Name <span class="req">*</span></label>
+                        <input type="text" id="cust-name" class="input" placeholder="z.B. Neo-Taler" maxlength="40">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="cust-code">Code (2–5 Zeichen) <span class="req">*</span></label>
+                            <input type="text" id="cust-code" class="input" placeholder="NTL" maxlength="5" style="text-transform:uppercase" oninput="this.value = this.value.toUpperCase()">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="cust-symbol">Symbol</label>
+                            <input type="text" id="cust-symbol" class="input" placeholder="◈" maxlength="3">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Ankerwährung & Kurs <span class="req">*</span></label>
+                        <div class="peg-box">
+                            <span class="fixed">1</span>
+                            <select id="cust-anchor" class="select" onchange="updateFoundryPreview()" aria-label="Ankerwährung"></select>
+                            <span class="fixed">=</span>
+                            <input type="text" inputmode="decimal" id="cust-peg" class="input" placeholder="z.B. 0,5" oninput="updateFoundryPreview()" aria-label="Kurs">
+                            <span class="fixed" id="cust-code-preview" style="color:var(--accent);">EINHEIT</span>
+                        </div>
+                        <p style="font-size:0.75rem;color:var(--text-faint);margin-top:6px;">
+                            Beispiel: „1 EUR = 0,5 NDM" bedeutet, 1 NDM ist 2 EUR wert. Deutsche Kommas werden akzeptiert.
+                        </p>
+                    </div>
+                    <div id="foundry-preview" style="padding:12px;background:var(--bg-elevated);border-radius:var(--radius-sm);font-size:0.8rem;color:var(--text-dim);font-family:var(--font-mono);">
+                        Vorschau: —
+                    </div>
+                </div>
+                <div>
+                    <h3 style="font-size:0.85rem;font-weight:700;color:var(--green);margin-bottom:12px;">[2] Stückelungen (Münzen & Scheine)</h3>
+                    <div style="display:grid;grid-template-columns:110px 110px 1fr 40px;gap:6px;margin-bottom:12px;">
+                        <input type="text" inputmode="decimal" id="denom-val" class="input" placeholder="Wert (z.B. 0,5)" aria-label="Nennwert">
+                        <select id="denom-type" class="select" aria-label="Typ">
+                            <option value="coin">Münze</option>
+                            <option value="note">Schein</option>
+                        </select>
+                        <input type="text" id="denom-name" class="input" placeholder="Bezeichnung" aria-label="Bezeichnung">
+                        <button class="btn btn-primary" onclick="addDenomination()" title="Hinzufügen" style="padding:0;">+</button>
+                    </div>
+                    <div style="max-height:260px;overflow-y:auto;">
+                        <table class="builder-table">
+                            <thead><tr><th>Typ</th><th>Wert</th><th>Name</th><th style="width:30px;"></th></tr></thead>
+                            <tbody id="denom-tbody"></tbody>
+                        </table>
+                    </div>
+                    <p style="font-size:0.75rem;color:var(--text-faint);margin-top:10px;">Mindestens 1 Stückelung erforderlich. Kommazahlen mit Komma oder Punkt erlaubt.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title" style="margin-bottom:16px;">Deine Währungen</div>
+            <div id="custom-currencies-grid" class="cards-grid"></div>
+        </div>
+    </div>
+
+    <!-- TAB 3: INSPECTOR -->
+    <div id="panel-inspector" class="panel" role="tabpanel">
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Stückelungs-Inspektor</div>
+                    <div class="card-subtitle">Bewerte jede Münze und jeden Schein deiner eigenen Währung gegen echte Live-Kurse.</div>
+                </div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+                    <div>
+                        <label class="form-label" style="margin:0;" for="inspect-source">Eigene Währung</label>
+                        <select id="inspect-source" class="select" style="min-width:200px;" onchange="renderDenominations()"></select>
+                    </div>
+                    <div>
+                        <label class="form-label" style="margin:0;" for="inspect-target">Gegenwert in</label>
+                        <select id="inspect-target" class="select" style="min-width:200px;" onchange="renderDenominations()"></select>
+                    </div>
+                </div>
+            </div>
+            <h3 style="font-size:0.85rem;font-weight:700;color:var(--amber);margin:16px 0 10px;">Münzen</h3>
+            <div id="coins-grid" class="cards-grid"></div>
+            <h3 style="font-size:0.85rem;font-weight:700;color:var(--green);margin:20px 0 10px;">Banknoten</h3>
+            <div id="notes-grid" class="cards-grid"></div>
+        </div>
+    </div>
+
+    <!-- TAB 4: ARCHIVE -->
+    <div id="panel-archive" class="panel" role="tabpanel">
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Währungsarchiv</div>
+                    <div class="card-subtitle">Alle aktuellen ISO-4217-Währungen (alphabetisch) und historischen Euro-Vorläufer (fixe Faktoren, nicht live).</div>
+                </div>
+                <input type="text" id="archive-search" class="input" placeholder="Suchen (Code, Name, Land)…" style="max-width:280px;" oninput="renderArchive()">
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+                <button class="btn btn-sm" id="filter-all" onclick="setArchiveFilter('all')">Alle</button>
+                <button class="btn btn-sm" id="filter-current" onclick="setArchiveFilter('current')">Aktuell (live)</button>
+                <button class="btn btn-sm" id="filter-hist" onclick="setArchiveFilter('historical')">Historisch (fix)</button>
+                <button class="btn btn-sm" id="filter-custom" onclick="setArchiveFilter('custom')">Eigene</button>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th onclick="sortArchive('code')">Code</th>
+                            <th onclick="sortArchive('name')">Name</th>
+                            <th onclick="sortArchive('country')">Land / Region</th>
+                            <th onclick="sortArchive('type')">Typ</th>
+                            <th onclick="sortArchive('rate')">1 EUR =</th>
+                            <th onclick="sortArchive('inverse')">1 Einheit = EUR</th>
+                        </tr>
+                    </thead>
+                    <tbody id="archive-tbody"></tbody>
+                </table>
+            </div>
+            <p style="font-size:0.75rem;color:var(--text-faint);margin-top:10px;" id="archive-meta"></p>
+        </div>
+    </div>
+</div>
+
+<!-- Dialog: Währung hinzufügen -->
+<dialog id="add-currency-dialog">
+    <h3>Währung zum Umrechner hinzufügen</h3>
+    <p>Wähle eine Währung aus dem Archiv oder eine deiner eigenen Währungen.</p>
+    <div class="form-group">
+        <label class="form-label" for="add-currency-select">Währung</label>
+        <select id="add-currency-select" class="select"></select>
+    </div>
+    <div class="dialog-actions">
+        <button class="btn" onclick="document.getElementById('add-currency-dialog').close()">Abbrechen</button>
+        <button class="btn btn-primary" onclick="confirmAddCurrency()">Hinzufügen</button>
+    </div>
+</dialog>
+
+<!-- Dialog: Bestätigung -->
+<dialog id="confirm-dialog">
+    <h3 id="dialog-title">Bestätigung</h3>
+    <p id="dialog-message"></p>
+    <div class="dialog-actions">
+        <button class="btn" onclick="document.getElementById('confirm-dialog').close()">Abbrechen</button>
+        <button class="btn btn-danger" id="dialog-confirm">Bestätigen</button>
+    </div>
+</dialog>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+/* ==========================================================================
+   MASTER CURRENCY METADATA — NUR Metadaten, KEINE rate-Werte!
+   ========================================================================== */
+
+const CURRENT_CURRENCIES = {
+    AED: { name: "VAE-Dirham", country: "Ver. Arabische Emirate", symbol: "د.إ", type: "fiat", pegged: "USD" },
+    AFN: { name: "Afghani", country: "Afghanistan", symbol: "؋", type: "fiat" },
+    ALL: { name: "Lek", country: "Albanien", symbol: "L", type: "fiat" },
+    AMD: { name: "Dram", country: "Armenien", symbol: "֏", type: "fiat" },
+    ANG: { name: "Antillen-Gulden", country: "Curaçao, Sint Maarten", symbol: "ƒ", type: "fiat", pegged: "USD" },
+    AOA: { name: "Kwanza", country: "Angola", symbol: "Kz", type: "fiat" },
+    ARS: { name: "Argentinischer Peso", country: "Argentinien", symbol: "$", type: "fiat" },
+    AUD: { name: "Australischer Dollar", country: "Australien, Kiribati, Nauru, Tuvalu", symbol: "A$", type: "fiat" },
+    AWG: { name: "Aruba-Florin", country: "Aruba", symbol: "ƒ", type: "fiat", pegged: "USD" },
+    AZN: { name: "Aserbaidschan-Manat", country: "Aserbaidschan", symbol: "₼", type: "fiat" },
+    BAM: { name: "Konvertible Mark", country: "Bosnien und Herzegowina", symbol: "KM", type: "fiat", pegged: "EUR" },
+    BBD: { name: "Barbados-Dollar", country: "Barbados", symbol: "Bds$", type: "fiat", pegged: "USD" },
+    BDT: { name: "Taka", country: "Bangladesch", symbol: "৳", type: "fiat" },
+    BGN: { name: "Lew", country: "Bulgarien", symbol: "лв", type: "fiat", pegged: "EUR" },
+    BHD: { name: "Bahrain-Dinar", country: "Bahrain", symbol: ".د.ب", type: "fiat", pegged: "USD" },
+    BIF: { name: "Burundi-Franc", country: "Burundi", symbol: "FBu", type: "fiat" },
+    BMD: { name: "Bermuda-Dollar", country: "Bermuda", symbol: "$", type: "fiat", pegged: "USD" },
+    BND: { name: "Brunei-Dollar", country: "Brunei", symbol: "B$", type: "fiat", pegged: "SGD" },
+    BOB: { name: "Boliviano", country: "Bolivien", symbol: "Bs.", type: "fiat" },
+    BRL: { name: "Real", country: "Brasilien", symbol: "R$", type: "fiat" },
+    BSD: { name: "Bahamas-Dollar", country: "Bahamas", symbol: "B$", type: "fiat", pegged: "USD" },
+    BTN: { name: "Ngultrum", country: "Bhutan", symbol: "Nu.", type: "fiat", pegged: "INR" },
+    BWP: { name: "Pula", country: "Botswana", symbol: "P", type: "fiat" },
+    BYN: { name: "Weißrussischer Rubel", country: "Belarus", symbol: "Br", type: "fiat" },
+    BZD: { name: "Belize-Dollar", country: "Belize", symbol: "BZ$", type: "fiat", pegged: "USD" },
+    CAD: { name: "Kanadischer Dollar", country: "Kanada", symbol: "C$", type: "fiat" },
+    CDF: { name: "Kongo-Franc", country: "Dem. Rep. Kongo", symbol: "FC", type: "fiat" },
+    CHF: { name: "Schweizer Franken", country: "Schweiz, Liechtenstein", symbol: "CHF", type: "fiat" },
+    CLP: { name: "Chilenischer Peso", country: "Chile", symbol: "$", type: "fiat" },
+    CNY: { name: "Renminbi Yuan", country: "China", symbol: "¥", type: "fiat" },
+    COP: { name: "Kolumbianischer Peso", country: "Kolumbien", symbol: "$", type: "fiat" },
+    CRC: { name: "Costa-Rica-Colón", country: "Costa Rica", symbol: "₡", type: "fiat" },
+    CUP: { name: "Kubanischer Peso", country: "Kuba", symbol: "$", type: "fiat" },
+    CVE: { name: "Kap-Verde-Escudo", country: "Cabo Verde", symbol: "$", type: "fiat", pegged: "EUR" },
+    CZK: { name: "Tschechische Krone", country: "Tschechien", symbol: "Kč", type: "fiat" },
+    DJF: { name: "Dschibuti-Franc", country: "Dschibuti", symbol: "Fdj", type: "fiat", pegged: "USD" },
+    DKK: { name: "Dänische Krone", country: "Dänemark, Färöer, Grönland", symbol: "kr", type: "fiat", pegged: "EUR" },
+    DOP: { name: "Dominikanischer Peso", country: "Dominikanische Republik", symbol: "RD$", type: "fiat" },
+    DZD: { name: "Algerischer Dinar", country: "Algerien", symbol: "د.ج", type: "fiat" },
+    EGP: { name: "Ägyptisches Pfund", country: "Ägypten", symbol: "E£", type: "fiat" },
+    ERN: { name: "Nakfa", country: "Eritrea", symbol: "Nfk", type: "fiat", pegged: "USD" },
+    ETB: { name: "Äthiopischer Birr", country: "Äthiopien", symbol: "Br", type: "fiat" },
+    EUR: { name: "Euro", country: "Europäische Währungsunion", symbol: "€", type: "fiat" },
+    FJD: { name: "Fidschi-Dollar", country: "Fidschi", symbol: "FJ$", type: "fiat" },
+    FKP: { name: "Falkland-Pfund", country: "Falklandinseln", symbol: "£", type: "fiat", pegged: "GBP" },
+    GBP: { name: "Pfund Sterling", country: "Vereinigtes Königreich", symbol: "£", type: "fiat" },
+    GEL: { name: "Lari", country: "Georgien", symbol: "₾", type: "fiat" },
+    GGP: { name: "Guernsey-Pfund", country: "Guernsey", symbol: "£", type: "fiat", pegged: "GBP" },
+    GHS: { name: "Cedi", country: "Ghana", symbol: "GH₵", type: "fiat" },
+    GIP: { name: "Gibraltar-Pfund", country: "Gibraltar", symbol: "£", type: "fiat", pegged: "GBP" },
+    GMD: { name: "Dalasi", country: "Gambia", symbol: "D", type: "fiat" },
+    GNF: { name: "Guinea-Franc", country: "Guinea", symbol: "FG", type: "fiat" },
+    GTQ: { name: "Quetzal", country: "Guatemala", symbol: "Q", type: "fiat" },
+    GYD: { name: "Guyana-Dollar", country: "Guyana", symbol: "G$", type: "fiat" },
+    HKD: { name: "Hongkong-Dollar", country: "Hongkong", symbol: "HK$", type: "fiat", pegged: "USD" },
+    HNL: { name: "Lempira", country: "Honduras", symbol: "L", type: "fiat" },
+    HTG: { name: "Gourde", country: "Haiti", symbol: "G", type: "fiat" },
+    HUF: { name: "Forint", country: "Ungarn", symbol: "Ft", type: "fiat" },
+    IDR: { name: "Rupiah", country: "Indonesien", symbol: "Rp", type: "fiat" },
+    ILS: { name: "Neuer Schekel", country: "Israel", symbol: "₪", type: "fiat" },
+    IMP: { name: "Manx-Pfund", country: "Isle of Man", symbol: "£", type: "fiat", pegged: "GBP" },
+    INR: { name: "Indische Rupie", country: "Indien, Bhutan", symbol: "₹", type: "fiat" },
+    IQD: { name: "Irakischer Dinar", country: "Irak", symbol: "ع.د", type: "fiat" },
+    IRR: { name: "Iranischer Rial", country: "Iran", symbol: "﷼", type: "fiat" },
+    ISK: { name: "Isländische Krone", country: "Island", symbol: "kr", type: "fiat" },
+    JEP: { name: "Jersey-Pfund", country: "Jersey", symbol: "£", type: "fiat", pegged: "GBP" },
+    JMD: { name: "Jamaika-Dollar", country: "Jamaika", symbol: "J$", type: "fiat" },
+    JOD: { name: "Jordanischer Dinar", country: "Jordanien", symbol: "د.ا", type: "fiat", pegged: "USD" },
+    JPY: { name: "Japanischer Yen", country: "Japan", symbol: "¥", type: "fiat" },
+    KES: { name: "Kenia-Schilling", country: "Kenia", symbol: "KSh", type: "fiat" },
+    KGS: { name: "Som", country: "Kirgisistan", symbol: "с", type: "fiat" },
+    KHR: { name: "Riel", country: "Kambodscha", symbol: "៛", type: "fiat" },
+    KMF: { name: "Komoren-Franc", country: "Komoren", symbol: "CF", type: "fiat", pegged: "EUR" },
+    KPW: { name: "Nordkoreanischer Won", country: "Nordkorea", symbol: "₩", type: "fiat" },
+    KRW: { name: "Südkoreanischer Won", country: "Südkorea", symbol: "₩", type: "fiat" },
+    KWD: { name: "Kuwait-Dinar", country: "Kuwait", symbol: "د.ك", type: "fiat" },
+    KYD: { name: "Kaiman-Dollar", country: "Kaimaninseln", symbol: "$", type: "fiat", pegged: "USD" },
+    KZT: { name: "Tenge", country: "Kasachstan", symbol: "₸", type: "fiat" },
+    LAK: { name: "Kip", country: "Laos", symbol: "₭", type: "fiat" },
+    LBP: { name: "Libanesisches Pfund", country: "Libanon", symbol: "ل.ل", type: "fiat" },
+    LKR: { name: "Sri-Lanka-Rupie", country: "Sri Lanka", symbol: "Rs", type: "fiat" },
+    LRD: { name: "Liberianischer Dollar", country: "Liberia", symbol: "L$", type: "fiat" },
+    LSL: { name: "Loti", country: "Lesotho", symbol: "M", type: "fiat", pegged: "ZAR" },
+    LYD: { name: "Libyscher Dinar", country: "Libyen", symbol: "ل.د", type: "fiat" },
+    MAD: { name: "Marokkanischer Dirham", country: "Marokko, Westsahara", symbol: "د.م.", type: "fiat" },
+    MDL: { name: "Moldau-Leu", country: "Moldawien", symbol: "L", type: "fiat" },
+    MGA: { name: "Ariary", country: "Madagaskar", symbol: "Ar", type: "fiat" },
+    MKD: { name: "Denar", country: "Nordmazedonien", symbol: "ден", type: "fiat" },
+    MMK: { name: "Kyat", country: "Myanmar", symbol: "K", type: "fiat" },
+    MNT: { name: "Tugrik", country: "Mongolei", symbol: "₮", type: "fiat" },
+    MOP: { name: "Pataca", country: "Macau", symbol: "MOP$", type: "fiat", pegged: "HKD" },
+    MRU: { name: "Ouguiya", country: "Mauretanien", symbol: "UM", type: "fiat" },
+    MUR: { name: "Mauritius-Rupie", country: "Mauritius", symbol: "₨", type: "fiat" },
+    MVR: { name: "Rufiyaa", country: "Malediven", symbol: "Rf", type: "fiat", pegged: "USD" },
+    MWK: { name: "Malawi-Kwacha", country: "Malawi", symbol: "MK", type: "fiat" },
+    MXN: { name: "Mexikanischer Peso", country: "Mexiko", symbol: "$", type: "fiat" },
+    MYR: { name: "Ringgit", country: "Malaysia", symbol: "RM", type: "fiat" },
+    MZN: { name: "Metical", country: "Mosambik", symbol: "MT", type: "fiat" },
+    NAD: { name: "Namibia-Dollar", country: "Namibia", symbol: "N$", type: "fiat", pegged: "ZAR" },
+    NGN: { name: "Naira", country: "Nigeria", symbol: "₦", type: "fiat" },
+    NIO: { name: "Córdoba Oro", country: "Nicaragua", symbol: "C$", type: "fiat" },
+    NOK: { name: "Norwegische Krone", country: "Norwegen", symbol: "kr", type: "fiat" },
+    NPR: { name: "Nepalesische Rupie", country: "Nepal", symbol: "₨", type: "fiat", pegged: "INR" },
+    NZD: { name: "Neuseeland-Dollar", country: "Neuseeland, Cookinseln, Niue, Tokelau", symbol: "NZ$", type: "fiat" },
+    OMR: { name: "Omanischer Rial", country: "Oman", symbol: "ر.ع.", type: "fiat", pegged: "USD" },
+    PAB: { name: "Balboa", country: "Panama", symbol: "B/.", type: "fiat", pegged: "USD" },
+    PEN: { name: "Sol", country: "Peru", symbol: "S/.", type: "fiat" },
+    PGK: { name: "Kina", country: "Papua-Neuguinea", symbol: "K", type: "fiat" },
+    PHP: { name: "Philippinischer Peso", country: "Philippinen", symbol: "₱", type: "fiat" },
+    PKR: { name: "Pakistanische Rupie", country: "Pakistan", symbol: "₨", type: "fiat" },
+    PLN: { name: "Złoty", country: "Polen", symbol: "zł", type: "fiat" },
+    PYG: { name: "Guaraní", country: "Paraguay", symbol: "₲", type: "fiat" },
+    QAR: { name: "Katar-Riyal", country: "Katar", symbol: "ر.ق", type: "fiat", pegged: "USD" },
+    RON: { name: "Rumänischer Leu", country: "Rumänien", symbol: "lei", type: "fiat" },
+    RSD: { name: "Serbischer Dinar", country: "Serbien", symbol: "дин.", type: "fiat" },
+    RUB: { name: "Russischer Rubel", country: "Russland", symbol: "₽", type: "fiat" },
+    RWF: { name: "Ruanda-Franc", country: "Ruanda", symbol: "FRw", type: "fiat" },
+    SAR: { name: "Saudi-Riyal", country: "Saudi-Arabien", symbol: "﷼", type: "fiat", pegged: "USD" },
+    SBD: { name: "Salomonen-Dollar", country: "Salomonen", symbol: "SI$", type: "fiat" },
+    SCR: { name: "Seychellen-Rupie", country: "Seychellen", symbol: "SR", type: "fiat" },
+    SDG: { name: "Sudanesisches Pfund", country: "Sudan", symbol: "ج.س.", type: "fiat" },
+    SEK: { name: "Schwedische Krone", country: "Schweden", symbol: "kr", type: "fiat" },
+    SGD: { name: "Singapur-Dollar", country: "Singapur, Brunei", symbol: "S$", type: "fiat" },
+    SHP: { name: "St.-Helena-Pfund", country: "St. Helena", symbol: "£", type: "fiat", pegged: "GBP" },
+    SLE: { name: "Leone", country: "Sierra Leone", symbol: "Le", type: "fiat" },
+    SOS: { name: "Somalia-Schilling", country: "Somalia", symbol: "Sh.So.", type: "fiat" },
+    SRD: { name: "Suriname-Dollar", country: "Suriname", symbol: "Sr$", type: "fiat" },
+    SSP: { name: "Südsudanesisches Pfund", country: "Südsudan", symbol: "£", type: "fiat" },
+    STN: { name: "Dobra", country: "São Tomé und Príncipe", symbol: "Db", type: "fiat", pegged: "EUR" },
+    SYP: { name: "Syrisches Pfund", country: "Syrien", symbol: "£S", type: "fiat" },
+    SZL: { name: "Lilangeni", country: "Eswatini", symbol: "L", type: "fiat", pegged: "ZAR" },
+    THB: { name: "Baht", country: "Thailand", symbol: "฿", type: "fiat" },
+    TJS: { name: "Somoni", country: "Tadschikistan", symbol: "SM", type: "fiat" },
+    TMT: { name: "Turkmenistan-Manat", country: "Turkmenistan", symbol: "m", type: "fiat" },
+    TND: { name: "Tunesischer Dinar", country: "Tunesien", symbol: "د.ت", type: "fiat" },
+    TOP: { name: "Paʻanga", country: "Tonga", symbol: "T$", type: "fiat" },
+    TRY: { name: "Türkische Lira", country: "Türkei", symbol: "₺", type: "fiat" },
+    TTD: { name: "Trinidad-und-Tobago-Dollar", country: "Trinidad und Tobago", symbol: "TT$", type: "fiat" },
+    TWD: { name: "Neuer Taiwan-Dollar", country: "Taiwan", symbol: "NT$", type: "fiat" },
+    TZS: { name: "Tansania-Schilling", country: "Tansania", symbol: "TSh", type: "fiat" },
+    UAH: { name: "Hrywnja", country: "Ukraine", symbol: "₴", type: "fiat" },
+    UGX: { name: "Uganda-Schilling", country: "Uganda", symbol: "USh", type: "fiat" },
+    USD: { name: "US-Dollar", country: "USA, Ecuador, El Salvador, Panama u.a.", symbol: "$", type: "fiat" },
+    UYU: { name: "Uruguayischer Peso", country: "Uruguay", symbol: "$U", type: "fiat" },
+    UZS: { name: "Soʻm", country: "Usbekistan", symbol: "so'm", type: "fiat" },
+    VES: { name: "Bolívar Soberano", country: "Venezuela", symbol: "Bs.S", type: "fiat" },
+    VND: { name: "Đồng", country: "Vietnam", symbol: "₫", type: "fiat" },
+    VUV: { name: "Vatu", country: "Vanuatu", symbol: "VT", type: "fiat" },
+    WST: { name: "Tala", country: "Samoa", symbol: "WS$", type: "fiat" },
+    XAF: { name: "CFA-Franc BEAC", country: "Kamerun, Tschad, Kongo, Gabun, Äquatorialguinea, ZAR", symbol: "FCFA", type: "fiat", pegged: "EUR" },
+    XCD: { name: "Ostkaribischer Dollar", country: "Antigua, Barbuda u.a.", symbol: "EC$", type: "fiat", pegged: "USD" },
+    XDR: { name: "Sonderziehungsrecht", country: "IWF", symbol: "SDR", type: "fiat" },
+    XOF: { name: "CFA-Franc BCEAO", country: "Benin, Burkina Faso u.a.", symbol: "CFA", type: "fiat", pegged: "EUR" },
+    XPF: { name: "CFP-Franc", country: "Französisch-Polynesien, Neukaledonien, Wallis und Futuna", symbol: "₣", type: "fiat", pegged: "EUR" },
+    YER: { name: "Jemen-Rial", country: "Jemen", symbol: "﷼", type: "fiat" },
+    ZAR: { name: "Rand", country: "Südafrika, Lesotho, Namibia, Eswatini", symbol: "R", type: "fiat" },
+    ZMW: { name: "Sambischer Kwacha", country: "Sambia", symbol: "ZK", type: "fiat" },
+    ZWG: { name: "Simbabwe-Gold (ZiG)", country: "Simbabwe", symbol: "ZiG", type: "fiat" }
+};
+
+const HISTORICAL_CURRENCIES = {
+    ATS: { name: "Österreichischer Schilling", country: "Österreich (bis 2002)", symbol: "öS", type: "historical", fixedRate: 13.76030 },
+    BEF: { name: "Belgischer Franken", country: "Belgien (bis 2002)", symbol: "fr.", type: "historical", fixedRate: 40.33990 },
+    CYP: { name: "Zypern-Pfund", country: "Zypern (bis 2008)", symbol: "£", type: "historical", fixedRate: 0.58527 },
+    DEM: { name: "Deutsche Mark", country: "Deutschland (bis 2002)", symbol: "DM", type: "historical", fixedRate: 1.95583 },
+    EEK: { name: "Estnische Krone", country: "Estland (bis 2011)", symbol: "kr", type: "historical", fixedRate: 15.64660 },
+    ESP: { name: "Spanische Pesete", country: "Spanien (bis 2002)", symbol: "₧", type: "historical", fixedRate: 166.38600 },
+    FIM: { name: "Finnische Mark", country: "Finnland (bis 2002)", symbol: "mk", type: "historical", fixedRate: 5.94573 },
+    FRF: { name: "Französischer Franc", country: "Frankreich (bis 2002)", symbol: "F", type: "historical", fixedRate: 6.55957 },
+    GRD: { name: "Griechische Drachme", country: "Griechenland (bis 2002)", symbol: "Δρχ", type: "historical", fixedRate: 340.75000 },
+    HRK: { name: "Kroatische Kuna", country: "Kroatien (bis 2023)", symbol: "kn", type: "historical", fixedRate: 7.53450 },
+    IEP: { name: "Irisches Pfund", country: "Irland (bis 2002)", symbol: "£", type: "historical", fixedRate: 0.78756 },
+    ITL: { name: "Italienische Lira", country: "Italien (bis 2002)", symbol: "₤", type: "historical", fixedRate: 1936.27000 },
+    LTL: { name: "Litas", country: "Litauen (bis 2015)", symbol: "Lt", type: "historical", fixedRate: 3.45280 },
+    LUF: { name: "Luxemburger Franken", country: "Luxemburg (bis 2002)", symbol: "F", type: "historical", fixedRate: 40.33990 },
+    LVL: { name: "Lats", country: "Lettland (bis 2014)", symbol: "Ls", type: "historical", fixedRate: 0.70280 },
+    MTL: { name: "Maltesische Lira", country: "Malta (bis 2008)", symbol: "Lm", type: "historical", fixedRate: 0.42930 },
+    NLG: { name: "Niederländischer Gulden", country: "Niederlande (bis 2002)", symbol: "ƒ", type: "historical", fixedRate: 2.20371 },
+    PTE: { name: "Portugiesischer Escudo", country: "Portugal (bis 2002)", symbol: "Esc.", type: "historical", fixedRate: 200.48200 },
+    SIT: { name: "Tolar", country: "Slowenien (bis 2007)", symbol: "SIT", type: "historical", fixedRate: 239.64000 },
+    SKK: { name: "Slowakische Krone", country: "Slowakei (bis 2009)", symbol: "Sk", type: "historical", fixedRate: 30.12600 }
+};
+
+/* ==========================================================================
+   STATE
+   ========================================================================== */
+const STORAGE_KEY = "AETHERIS_V51_STATE";
+const RATES_STORAGE_KEY = "AETHERIS_V51_RATES";
+const RATES_MAX_AGE_MS = 15 * 60 * 1000;
+
+let liveRates = {};
+let ratesTimestamp = 0;
+let customCurrencies = {};
+/**
+ * matrixRows: Konfiguration der angezeigten Währungen im Umrechner.
+ * Struktur: [{ code: "EUR" }, { code: "USD" }]
+ * Die Basis wird separat in `matrixBaseCode` gespeichert.
+ * Der Betrag der Basis in `matrixBaseAmount`.
+ */
+let matrixRows = [];           // Liste der Währungen (Codes)
+let matrixBaseCode = null;     // aktuelle Basiswährung (Eingabefeld)
+let matrixBaseAmount = '';     // String, damit Cursor nicht springt
+let builderDenominations = [];
+let archiveFilter = 'all';
+let archiveSortKey = 'code';
+let archiveSortAsc = true;
+let syncInProgress = false;
+let lastManualSync = 0;
+
+/* ==========================================================================
+   UTILITIES
+   ========================================================================== */
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function debounce(fn, ms) {
+    let t;
+    return function(...args) {
+        clearTimeout(t);
+        t = setTimeout(() => fn.apply(this, args), ms);
+    };
+}
+
+/**
+ * Robustes Parsen deutscher und internationaler Zahleneingaben.
+ * - "1.234,56" → 1234.56
+ * - "1,5"      → 1.5
+ * - "1.5"      → 1.5   (Punkt als Dezimaltrenner, wenn kein Komma vorhanden)
+ * - "1234"     → 1234
+ * - "1.234"    → 1234  (Punkt als Tausendertrenner, wenn 3 Stellen folgen und kein Komma)
+ * - ""         → NaN
+ */
+function parseGermanNumber(raw) {
+    if (typeof raw === 'number') return raw;
+    if (!raw || typeof raw !== 'string') return NaN;
+    let s = raw.trim();
+    if (!s) return NaN;
+
+    const hasComma = s.includes(',');
+    const hasDot = s.includes('.');
+
+    if (hasComma && hasDot) {
+        // "1.234,56" → Punkte weg, Komma zu Punkt
+        s = s.replace(/\./g, '').replace(',', '.');
+    } else if (hasComma) {
+        // "1,5" → "1.5"
+        s = s.replace(',', '.');
+    } else if (hasDot) {
+        // Nur Punkte: prüfen ob Dezimaltrenner oder Tausendertrenner
+        const parts = s.split('.');
+        if (parts.length === 2 && parts[1].length !== 3) {
+            // "1.5" → Dezimaltrenner, lassen wie ist
+        } else if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
+            // "1.234" oder "1.234.567" → Tausendertrenner, Punkte weg
+            // Aber Vorsicht: "0.001" soll 0.001 sein, nicht 1
+            // Heuristik: wenn alle Teile nach dem ersten exakt 3 Stellen haben UND der erste Teil ≤ 3 Stellen hat, Tausendertrenner
+            const looksLikeThousands = parts[0].length <= 3 && parts.slice(1).every(p => p.length === 3);
+            if (looksLikeThousands && s.length > 4) {
+                s = s.replace(/\./g, '');
+            }
+            // sonst: als Dezimalzahl lassen
+        }
+    }
+
+    const n = Number(s);
+    return isNaN(n) ? NaN : n;
+}
+
+function formatRate(val) {
+    if (val === undefined || val === null || isNaN(val)) return '—';
+    const num = Number(val);
+    if (num === 0) return '0,00000';
+    if (Math.abs(num) < 0.00001) return num.toExponential(4).replace('.', ',');
+    return num.toLocaleString('de-DE', { minimumFractionDigits: 5, maximumFractionDigits: 5 });
+}
+
+function formatAmount(val) {
+    if (val === undefined || val === null || isNaN(val)) return '0,00';
+    return Number(val).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 5 });
+}
+
+function toast(message, type = 'info', duration = 3500) {
+    const container = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = message;
+    container.appendChild(el);
+    setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateX(20px)';
+        el.style.transition = 'all 0.2s';
+        setTimeout(() => el.remove(), 250);
+    }, duration);
+}
+
+function confirmDialog(title, message) {
+    return new Promise((resolve) => {
+        const dialog = document.getElementById('confirm-dialog');
+        if (dialog.open) dialog.close();
+        document.getElementById('dialog-title').textContent = title;
+        document.getElementById('dialog-message').textContent = message;
+        const confirmBtn = document.getElementById('dialog-confirm');
+        const handler = () => { dialog.close(); confirmBtn.removeEventListener('click', handler); resolve(true); };
+        confirmBtn.addEventListener('click', handler);
+        dialog.addEventListener('close', () => resolve(false), { once: true });
+        dialog.showModal();
+    });
+}
+
+/* ==========================================================================
+   RATE LOOKUP
+   ========================================================================== */
+function getRateToEUR(code) {
+    if (!code) return null;
+    if (HISTORICAL_CURRENCIES[code]) {
+        return HISTORICAL_CURRENCIES[code].fixedRate;
+    }
+    if (liveRates[code] !== undefined) {
+        return liveRates[code];
+    }
+    if (customCurrencies[code]) {
+        const anchorRate = getRateToEUR(customCurrencies[code].anchorCode);
+        if (anchorRate === null) return null;
+        // 1 Anker = peg Eigene → 1 Eigene = 1/peg Anker → in EUR: anchorRate / peg
+        return anchorRate / customCurrencies[code].pegRate;
+    }
+    return null;
+}
+
+function getCurrencyInfo(code) {
+    if (CURRENT_CURRENCIES[code]) return { ...CURRENT_CURRENCIES[code], code, isLive: true };
+    if (HISTORICAL_CURRENCIES[code]) return { ...HISTORICAL_CURRENCIES[code], code, isLive: false };
+    if (customCurrencies[code]) return {
+        name: customCurrencies[code].name,
+        country: 'Eigene Währung',
+        symbol: customCurrencies[code].symbol || code,
+        type: 'custom',
+        code,
+        isLive: true
+    };
+    return { name: code, country: 'Unbekannt', symbol: code, type: 'unknown', code, isLive: false };
+}
+
+/* ==========================================================================
+   LIVE RATES
+   ========================================================================== */
+async function fetchWithTimeout(url, timeoutMs = 8000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timer);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+    } catch (e) {
+        clearTimeout(timer);
+        throw e;
+    }
+}
+
+async function fetchLiveRates() {
+    if (syncInProgress) return false;
+    syncInProgress = true;
+    updateStatus('syncing', 'Synchronisiere mit EZB…');
+
+    let success = false;
+    let source = '';
+    let newRates = { ...liveRates }; // MERGE statt Replace
+
+    // Primär: Frankfurter v2
+    try {
+        const data = await fetchWithTimeout('https://api.frankfurter.dev/v2/rates?base=EUR');
+        if (data && typeof data === 'object' && data.rates && typeof data.rates === 'object') {
+            let count = 0;
+            for (const [code, rate] of Object.entries(data.rates)) {
+                if (typeof rate === 'number' && rate > 0 && CURRENT_CURRENCIES[code]) {
+                    newRates[code] = rate;
+                    count++;
+                }
+            }
+            newRates.EUR = 1.0;
+            if (count > 10) {
+                liveRates = newRates;
+                ratesTimestamp = Date.now();
+                source = 'EZB/Frankfurter';
+                success = true;
+            }
+        }
+    } catch (e) {
+        console.warn('[AETHERIS] Frankfurter fehlgeschlagen:', e.message);
+    }
+
+    // Fallback
+    if (!success) {
+        try {
+            const data = await fetchWithTimeout('https://open.er-api.com/v6/latest/EUR');
+            if (data && data.rates && typeof data.rates === 'object') {
+                let count = 0;
+                for (const [code, rate] of Object.entries(data.rates)) {
+                    if (typeof rate === 'number' && rate > 0 && CURRENT_CURRENCIES[code]) {
+                        if (newRates[code] === undefined) {
+                            newRates[code] = rate;
+                            count++;
+                        }
+                    }
+                }
+                newRates.EUR = 1.0;
+                if (count > 10) {
+                    liveRates = newRates;
+                    ratesTimestamp = Date.now();
+                    source = 'open.er-api.com';
+                    success = true;
+                }
+            }
+        } catch (e) {
+            console.warn('[AETHERIS] Fallback fehlgeschlagen:', e.message);
+        }
+    }
+
+    syncInProgress = false;
+
+    if (success) {
+        persistRates();
+        updateStatus('live', `Live: ${source} · ${new Date(ratesTimestamp).toLocaleTimeString('de-DE', {hour:'2-digit',minute:'2-digit'})}`);
+        refreshAllViews();
+        toast(`Kurse synchronisiert (${source})`, 'success');
+        return true;
+    } else {
+        if (Object.keys(liveRates).length > 0) {
+            const age = Date.now() - ratesTimestamp;
+            updateStatus('stale', `Veraltet: ${Math.round(age/60000)} min alt`);
+        } else {
+            updateStatus('offline', 'Offline — keine Kurse');
+        }
+        toast('Sync fehlgeschlagen. Prüfe Internetverbindung.', 'error');
+        return false;
+    }
+}
+
+function persistRates() {
+    try {
+        localStorage.setItem(RATES_STORAGE_KEY, JSON.stringify({
+            rates: liveRates,
+            timestamp: ratesTimestamp
+        }));
+    } catch (e) {
+        console.warn('[AETHERIS] Rates-Persistenz fehlgeschlagen:', e);
+    }
+}
+
+function loadPersistedRates() {
+    try {
+        const raw = localStorage.getItem(RATES_STORAGE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (data && data.rates && typeof data.rates === 'object' && data.timestamp) {
+            liveRates = data.rates;
+            ratesTimestamp = data.timestamp;
+            const age = Date.now() - ratesTimestamp;
+            if (age < RATES_MAX_AGE_MS) {
+                updateStatus('live', `Live (gespeichert: ${new Date(ratesTimestamp).toLocaleTimeString('de-DE', {hour:'2-digit',minute:'2-digit'})})`);
+            } else {
+                updateStatus('stale', `Veraltet: ${Math.round(age/60000)} min alt`);
+            }
+        }
+    } catch (e) {
+        console.warn('[AETHERIS] Rates-Laden fehlgeschlagen:', e);
+    }
+}
+
+function updateStatus(state, text) {
+    const badge = document.getElementById('status-badge');
+    const textEl = document.getElementById('status-text');
+    badge.className = 'status-badge ' + (state === 'syncing' ? 'stale' : state);
+    textEl.textContent = text;
+}
+
+async function manualSync() {
+    const now = Date.now();
+    if (now - lastManualSync < 3000) {
+        toast('Bitte warte 3 Sekunden zwischen manuellen Syncs.', 'info');
+        return;
+    }
+    lastManualSync = now;
+    await fetchLiveRates();
+}
+
+/* ==========================================================================
+   MATRIX — BASIS-KONZEPT
+   ==========================================================================
+   Nur die Basiswährung ist editierbar. Alle anderen sind Ausgabe.
+   - `matrixRows` = Liste der Währungen (Codes)
+   - `matrixBaseCode` = welche Währung ist die Eingabe
+   - `matrixBaseAmount` = String-Betrag in Basiswährung
+   ========================================================================== */
+
+function renderMatrix() {
+    const baseContainer = document.getElementById('matrix-base-container');
+    const emptyEl = document.getElementById('matrix-empty');
+    const listEl = document.getElementById('matrix-list');
+
+    if (matrixRows.length === 0) {
+        baseContainer.classList.add('hidden');
+        emptyEl.classList.remove('hidden');
+        listEl.innerHTML = '';
+        return;
+    }
+
+    emptyEl.classList.add('hidden');
+    baseContainer.classList.remove('hidden');
+
+    // Basis-Code validieren
+    if (!matrixBaseCode || !matrixRows.includes(matrixBaseCode)) {
+        matrixBaseCode = matrixRows[0];
+    }
+
+    // Basis-Selektor
+    const baseSelect = document.getElementById('matrix-base-currency');
+    baseSelect.innerHTML = '';
+    matrixRows.forEach(code => {
+        const info = getCurrencyInfo(code);
+        baseSelect.innerHTML += `<option value="${escapeHtml(code)}" ${code === matrixBaseCode ? 'selected' : ''}>${escapeHtml(code)} — ${escapeHtml(info.name)}</option>`;
+    });
+
+    // Basis-Betrag
+    const baseAmountInput = document.getElementById('matrix-base-amount');
+    if (document.activeElement !== baseAmountInput) {
+        baseAmountInput.value = matrixBaseAmount;
+    }
+
+    // Symbol
+    const baseInfo = getCurrencyInfo(matrixBaseCode);
+    document.getElementById('matrix-base-symbol').textContent = baseInfo.symbol || '';
+
+    // Andere Zeilen rendern
+    listEl.innerHTML = '';
+    const baseRate = getRateToEUR(matrixBaseCode);
+    const baseAmountNum = parseGermanNumber(matrixBaseAmount);
+    const baseEUR = (baseRate !== null && !isNaN(baseAmountNum)) ? baseAmountNum / baseRate : null;
+
+    matrixRows.forEach(code => {
+        if (code === matrixBaseCode) return;
+
+        const info = getCurrencyInfo(code);
+        const rate = getRateToEUR(code);
+        const rateStr = rate === null ? 'kein Kurs' : `1 EUR = ${formatRate(rate)}`;
+
+        const div = document.createElement('div');
+        div.className = 'matrix-row';
+        div.innerHTML = `
+            <div>
+                <select class="select" onchange="onMatrixRowCurrencyChange('${escapeHtml(code)}', this.value)" aria-label="Währung">
+                    ${matrixRows.map(c => {
+                        const i = getCurrencyInfo(c);
+                        return `<option value="${escapeHtml(c)}" ${c === code ? 'selected' : ''}>${escapeHtml(c)} — ${escapeHtml(i.name)}</option>`;
+                    }).join('')}
+                </select>
+            </div>
+            <div class="output-display ${baseEUR === null || rate === null ? 'empty' : ''}">
+                ${baseEUR !== null && rate !== null ? formatAmount(baseEUR * rate) : '—'}
+            </div>
+            <div class="rate-tag" title="Live-Kurs">${rateStr}</div>
+            <div style="display:flex;gap:4px;">
+                <button class="btn btn-sm" onclick="setBase('${escapeHtml(code)}')" title="Als Basis festlegen" aria-label="Als Basis festlegen" style="flex:1;">⇄</button>
+                <button class="btn btn-danger btn-icon" onclick="removeMatrixRow('${escapeHtml(code)}')" title="Entfernen" aria-label="Entfernen" style="width:32px;height:32px;">✕</button>
+            </div>
+        `;
+        listEl.appendChild(div);
+    });
+
+    if (matrixRows.length === 1) {
+        listEl.innerHTML = `<div class="empty" style="font-size:0.8rem;">Füge eine weitere Währung hinzu, um Umrechnungen zu sehen.</div>`;
+    }
+}
+
+function onBaseCurrencyChange(newCode) {
+    if (!matrixRows.includes(newCode)) return;
+    matrixBaseCode = newCode;
+    renderMatrix();
+    saveState();
+}
+
+const onBaseAmountInputDebounced = debounce((raw) => {
+    matrixBaseAmount = raw;
+    renderMatrix();
+    saveState();
+}, 200);
+
+function onBaseAmountInput(raw) {
+    onBaseAmountInputDebounced(raw);
+}
+
+function onMatrixRowCurrencyChange(oldCode, newCode) {
+    if (oldCode === newCode) return;
+    const idx = matrixRows.indexOf(oldCode);
+    if (idx === -1) return;
+    if (matrixRows.includes(newCode)) {
+        toast('Diese Währung ist bereits in der Liste.', 'info');
+        renderMatrix();
+        return;
+    }
+    matrixRows[idx] = newCode;
+    if (matrixBaseCode === oldCode) matrixBaseCode = newCode;
+    renderMatrix();
+    saveState();
+}
+
+function setBase(code) {
+    if (!matrixRows.includes(code)) return;
+    matrixBaseCode = code;
+    renderMatrix();
+    saveState();
+}
+
+function removeMatrixRow(code) {
+    if (matrixRows.length <= 1) {
+        toast('Mindestens eine Währung muss bleiben.', 'info');
+        return;
+    }
+    matrixRows = matrixRows.filter(c => c !== code);
+    if (matrixBaseCode === code) matrixBaseCode = matrixRows[0];
+    renderMatrix();
+    saveState();
+}
+
+/* ==========================================================================
+   ADD CURRENCY DIALOG
+   ========================================================================== */
+function openAddCurrencyDialog() {
+    const dialog = document.getElementById('add-currency-dialog');
+    const select = document.getElementById('add-currency-select');
+    select.innerHTML = '';
+
+    // Eigene Währungen
+    const customKeys = Object.keys(customCurrencies).sort();
+    if (customKeys.length > 0) {
+        select.innerHTML += `<optgroup label="Eigene Währungen">`;
+        customKeys.forEach(c => {
+            const info = getCurrencyInfo(c);
+            select.innerHTML += `<option value="${escapeHtml(c)}">${escapeHtml(c)} — ${escapeHtml(info.name)}</option>`;
+        });
+        select.innerHTML += `</optgroup>`;
+    }
+
+    // Aktuelle Fiat
+    select.innerHTML += `<optgroup label="Aktuelle Währungen (live)">`;
+    Object.keys(CURRENT_CURRENCIES).sort().forEach(c => {
+        select.innerHTML += `<option value="${escapeHtml(c)}">${escapeHtml(c)} — ${escapeHtml(CURRENT_CURRENCIES[c].name)}</option>`;
+    });
+    select.innerHTML += `</optgroup>`;
+
+    // Historisch
+    select.innerHTML += `<optgroup label="Historische Währungen (fix)">`;
+    Object.keys(HISTORICAL_CURRENCIES).sort().forEach(c => {
+        select.innerHTML += `<option value="${escapeHtml(c)}">${escapeHtml(c)} — ${escapeHtml(HISTORICAL_CURRENCIES[c].name)}</option>`;
+    });
+    select.innerHTML += `</optgroup>`;
+
+    // Bereits vorhandene Währungen deaktivieren
+    Array.from(select.options).forEach(opt => {
+        if (matrixRows.includes(opt.value)) opt.disabled = true;
+    });
+
+    // Erste nicht-deaktivierte Option vorwählen
+    const firstEnabled = Array.from(select.options).find(o => !o.disabled);
+    if (firstEnabled) select.value = firstEnabled.value;
+
+    dialog.showModal();
+}
+
+function confirmAddCurrency() {
+    const select = document.getElementById('add-currency-select');
+    const code = select.value;
+    const dialog = document.getElementById('add-currency-dialog');
+
+    if (!code) { toast('Keine Währung ausgewählt.', 'error'); return; }
+    if (matrixRows.includes(code)) { toast('Bereits vorhanden.', 'info'); return; }
+
+    matrixRows.push(code);
+    if (!matrixBaseCode) matrixBaseCode = code;
+    dialog.close();
+    renderMatrix();
+    saveState();
+    toast(`"${code}" hinzugefügt.`, 'success');
+}
+
+/* ==========================================================================
+   FOUNDRY
+   ========================================================================== */
+function populateFoundrySelect() {
+    const sel = document.getElementById('cust-anchor');
+    if (!sel) return;
+    const prev = sel.value;
+    sel.innerHTML = '';
+
+    sel.innerHTML += `<optgroup label="Aktuell (live)">`;
+    Object.keys(CURRENT_CURRENCIES).sort().forEach(c => {
+        sel.innerHTML += `<option value="${c}">${c} — ${escapeHtml(CURRENT_CURRENCIES[c].name)}</option>`;
+    });
+    sel.innerHTML += `</optgroup>`;
+    sel.innerHTML += `<optgroup label="Historisch (fix)">`;
+    Object.keys(HISTORICAL_CURRENCIES).sort().forEach(c => {
+        sel.innerHTML += `<option value="${c}">${c} — ${escapeHtml(HISTORICAL_CURRENCIES[c].name)}</option>`;
+    });
+    sel.innerHTML += `</optgroup>`;
+
+    if (prev && (CURRENT_CURRENCIES[prev] || HISTORICAL_CURRENCIES[prev])) {
+        sel.value = prev;
+    } else {
+        sel.value = 'EUR';
+    }
+}
+
+function updateFoundryPreview() {
+    const anchor = document.getElementById('cust-anchor')?.value || 'EUR';
+    const peg = parseGermanNumber(document.getElementById('cust-peg')?.value);
+    const code = (document.getElementById('cust-code')?.value || 'EINHEIT').trim().toUpperCase();
+
+    const codePreview = document.getElementById('cust-code-preview');
+    if (codePreview) codePreview.textContent = code || 'EINHEIT';
+
+    const preview = document.getElementById('foundry-preview');
+    if (!preview) return;
+
+    if (isNaN(peg) || peg <= 0) {
+        preview.textContent = 'Vorschau: Bitte gültigen Kurs > 0 eingeben (z.B. 0,5 oder 1.95583).';
+        return;
+    }
+
+    const anchorRate = getRateToEUR(anchor);
+    if (anchorRate === null) {
+        preview.textContent = 'Vorschau: Ankerwährung hat keinen Live-Kurs. Bitte synchronisieren.';
+        return;
+    }
+
+    // 1 Anker = peg Eigene
+    // → 1 Eigene = 1/peg Anker
+    // → in EUR: (1/peg) * anchorRate = anchorRate / peg
+    const ownInEUR = anchorRate / peg;
+    const eurInOwn = peg / anchorRate;
+
+    preview.innerHTML = `
+        <div style="color:var(--text);font-weight:600;margin-bottom:4px;">1 ${escapeHtml(code || 'EINHEIT')} ≈ ${formatRate(ownInEUR)} EUR</div>
+        <div style="color:var(--text-dim);">1 EUR ≈ ${formatRate(eurInOwn)} ${escapeHtml(code || 'EINHEIT')}</div>
+    `;
+}
+
+function addDenomination() {
+    const valInput = document.getElementById('denom-val');
+    const typeInput = document.getElementById('denom-type');
+    const nameInput = document.getElementById('denom-name');
+
+    const val = parseGermanNumber(valInput.value);
+    if (isNaN(val) || val <= 0) {
+        toast('Bitte gültigen positiven Nennwert eingeben (z.B. 0,5 oder 1,50).', 'error');
+        return;
+    }
+
+    builderDenominations.push({
+        type: typeInput.value,
+        val: Number(val.toFixed(5)),
+        name: nameInput.value.trim() || (typeInput.value === 'coin' ? 'Münze' : 'Banknote')
+    });
+    builderDenominations.sort((a, b) => a.val - b.val);
+
+    valInput.value = '';
+    nameInput.value = '';
+    valInput.focus();
+    renderBuilderTable();
+    saveState();
+}
+
+function removeDenomination(idx) {
+    builderDenominations.splice(idx, 1);
+    renderBuilderTable();
+    saveState();
+}
+
+function renderBuilderTable() {
+    const tbody = document.getElementById('denom-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (builderDenominations.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text-faint);padding:20px;">Noch keine Stückelungen. Oben eingeben und [+] klicken.</td></tr>`;
+        return;
+    }
+
+    builderDenominations.forEach((d, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><span class="badge ${d.type === 'coin' ? 'badge-hist' : 'badge-custom'}">${d.type === 'coin' ? 'Münze' : 'Schein'}</span></td>
+            <td style="font-weight:700;">${formatAmount(d.val)}</td>
+            <td>${escapeHtml(d.name)}</td>
+            <td><button class="btn btn-danger btn-icon" style="width:26px;height:26px;font-size:0.7rem;" onclick="removeDenomination(${idx})" aria-label="Entfernen">✕</button></td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function saveCurrency() {
+    const name = (document.getElementById('cust-name')?.value || '').trim();
+    const codeRaw = (document.getElementById('cust-code')?.value || '').trim().toUpperCase();
+    const symbol = (document.getElementById('cust-symbol')?.value || '').trim();
+    const anchor = document.getElementById('cust-anchor')?.value || 'EUR';
+    const peg = parseGermanNumber(document.getElementById('cust-peg')?.value);
+
+    if (!name) { toast('Bitte einen Namen eingeben.', 'error'); return; }
+    if (!codeRaw || codeRaw.length < 2) { toast('Code: mindestens 2 Zeichen.', 'error'); return; }
+    if (!/^[A-Z0-9]{2,5}$/.test(codeRaw)) { toast('Code: nur A–Z und 0–9, 2–5 Zeichen.', 'error'); return; }
+    if (CURRENT_CURRENCIES[codeRaw] || HISTORICAL_CURRENCIES[codeRaw]) {
+        toast(`Code "${codeRaw}" ist bereits vergeben (ISO-Währung). Bitte anderen wählen.`, 'error');
+        return;
+    }
+    if (customCurrencies[codeRaw]) {
+        toast(`Code "${codeRaw}" existiert bereits als eigene Währung.`, 'error');
+        return;
+    }
+    if (isNaN(peg) || peg <= 0) { toast('Bitte gültigen Ankerkurs > 0 eingeben.', 'error'); return; }
+    if (peg > 1e9) { toast('Kurs unrealistisch hoch (max. 1 Milliarde).', 'error'); return; }
+    if (builderDenominations.length === 0) { toast('Mindestens eine Stückelung erforderlich.', 'error'); return; }
+
+    const anchorRate = getRateToEUR(anchor);
+    if (anchorRate === null) { toast('Ankerwährung hat keinen gültigen Kurs.', 'error'); return; }
+
+    customCurrencies[codeRaw] = {
+        name,
+        code: codeRaw,
+        symbol: symbol || codeRaw,
+        anchorCode: anchor,
+        pegRate: Number(peg.toFixed(5)),
+        denominations: JSON.parse(JSON.stringify(builderDenominations))
+    };
+
+    document.getElementById('cust-name').value = '';
+    document.getElementById('cust-code').value = '';
+    document.getElementById('cust-symbol').value = '';
+    document.getElementById('cust-peg').value = '';
+    builderDenominations = [];
+    renderBuilderTable();
+    updateFoundryPreview();
+
+    saveState();
+    renderCustomCurrencies();
+    populateAllSelects();
+    renderMatrix();
+    renderArchive();
+    renderDenominations();
+    toast(`Währung "${codeRaw} — ${name}" gespeichert.`, 'success');
+}
+
+function deleteCurrency(code) {
+    confirmDialog('Währung löschen', `"${code}" wirklich unwiderruflich löschen?`).then(ok => {
+        if (!ok) return;
+        delete customCurrencies[code];
+        matrixRows = matrixRows.filter(c => c !== code);
+        if (matrixBaseCode === code) matrixBaseCode = matrixRows[0] || null;
+        saveState();
+        renderCustomCurrencies();
+        populateAllSelects();
+        renderMatrix();
+        renderArchive();
+        renderDenominations();
+        toast(`"${code}" gelöscht.`, 'info');
+    });
+}
+
+function renderCustomCurrencies() {
+    const grid = document.getElementById('custom-currencies-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const keys = Object.keys(customCurrencies).sort();
+    if (keys.length === 0) {
+        grid.innerHTML = `<div class="empty" style="grid-column:1/-1;">Noch keine eigene Währung erstellt. Oben links ausfüllen und speichern.</div>`;
+        return;
+    }
+
+    keys.forEach(code => {
+        const c = customCurrencies[code];
+        const card = document.createElement('div');
+        card.className = 'denom-card';
+        card.style.borderLeftColor = 'var(--green)';
+
+        card.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <div>
+                    <div style="font-size:1.05rem;font-weight:700;">${escapeHtml(c.name)}</div>
+                    <div style="font-family:var(--font-mono);font-size:0.8rem;color:var(--accent);margin-top:2px;">${escapeHtml(code)} · ${escapeHtml(c.symbol || code)}</div>
+                </div>
+                <button class="btn btn-danger btn-icon" style="width:28px;height:28px;font-size:0.7rem;" onclick="deleteCurrency('${escapeHtml(code)}')" aria-label="Löschen">✕</button>
+            </div>
+            <div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:0.8rem;">
+                <div style="color:var(--text-faint);font-size:0.65rem;text-transform:uppercase;margin-bottom:2px;">Anker</div>
+                1 ${escapeHtml(c.anchorCode)} = ${formatRate(c.pegRate)} ${escapeHtml(code)}
+                <div style="font-size:0.7rem;color:var(--text-faint);margin-top:4px;">${c.denominations.length} Stückelung(en)</div>
+            </div>
+            <button class="btn btn-sm" style="width:100%;margin-top:10px;justify-content:center;" onclick="inspectCurrency('${escapeHtml(code)}')">Im Inspektor prüfen</button>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+function inspectCurrency(code) {
+    switchTab('inspector');
+    const sel = document.getElementById('inspect-source');
+    if (sel) {
+        sel.value = code;
+        renderDenominations();
+    }
+}
+
+/* ==========================================================================
+   INSPECTOR
+   ========================================================================== */
+function populateInspectorSelects() {
+    const sourceSel = document.getElementById('inspect-source');
+    if (!sourceSel) return;
+    const prev = sourceSel.value;
+    sourceSel.innerHTML = '';
+
+    const keys = Object.keys(customCurrencies).sort();
+    if (keys.length === 0) {
+        sourceSel.innerHTML = `<option value="">— keine eigene Währung —</option>`;
+    } else {
+        keys.forEach(c => {
+            sourceSel.innerHTML += `<option value="${escapeHtml(c)}">${escapeHtml(c)} — ${escapeHtml(customCurrencies[c].name)}</option>`;
+        });
+        if (prev && customCurrencies[prev]) sourceSel.value = prev;
+    }
+
+    const targetSel = document.getElementById('inspect-target');
+    if (!targetSel) return;
+    const prevT = targetSel.value;
+    targetSel.innerHTML = '';
+    targetSel.innerHTML += `<optgroup label="Aktuell (live)">`;
+    Object.keys(CURRENT_CURRENCIES).sort().forEach(c => {
+        targetSel.innerHTML += `<option value="${c}">${c} — ${escapeHtml(CURRENT_CURRENCIES[c].name)}</option>`;
+    });
+    targetSel.innerHTML += `</optgroup>`;
+    targetSel.innerHTML += `<optgroup label="Historisch (fix)">`;
+    Object.keys(HISTORICAL_CURRENCIES).sort().forEach(c => {
+        targetSel.innerHTML += `<option value="${c}">${c} — ${escapeHtml(HISTORICAL_CURRENCIES[c].name)}</option>`;
+    });
+    targetSel.innerHTML += `</optgroup>`;
+    if (prevT && (CURRENT_CURRENCIES[prevT] || HISTORICAL_CURRENCIES[prevT])) {
+        targetSel.value = prevT;
+    } else {
+        targetSel.value = 'EUR';
+    }
+}
+
+function renderDenominations() {
+    const sourceCode = document.getElementById('inspect-source')?.value;
+    const targetCode = document.getElementById('inspect-target')?.value || 'EUR';
+
+    const coinsGrid = document.getElementById('coins-grid');
+    const notesGrid = document.getElementById('notes-grid');
+    if (!coinsGrid || !notesGrid) return;
+
+    if (!sourceCode || !customCurrencies[sourceCode]) {
+        coinsGrid.innerHTML = `<div class="empty" style="grid-column:1/-1;">Keine eigene Währung ausgewählt oder vorhanden. Erstelle zuerst eine im Tab „Eigene Währung".</div>`;
+        notesGrid.innerHTML = '';
+        return;
+    }
+
+    const source = customCurrencies[sourceCode];
+    const sourceRate = getRateToEUR(sourceCode);
+    const targetRate = getRateToEUR(targetCode);
+    const targetInfo = getCurrencyInfo(targetCode);
+
+    if (sourceRate === null || targetRate === null) {
+        coinsGrid.innerHTML = `<div class="empty" style="grid-column:1/-1;">Kein Kurs verfügbar. Bitte synchronisieren.</div>`;
+        notesGrid.innerHTML = '';
+        return;
+    }
+
+    // 1 Quelleinheit = sourceRate EUR = sourceRate / targetRate Ziel
+    const multiplier = sourceRate / targetRate;
+
+    coinsGrid.innerHTML = '';
+    notesGrid.innerHTML = '';
+    let coinCount = 0, noteCount = 0;
+
+    source.denominations.forEach(d => {
+        const converted = d.val * multiplier;
+        const card = document.createElement('div');
+        card.className = `denom-card ${d.type}`;
+
+        card.innerHTML = `
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div class="denom-glyph">${d.type === 'coin' ? '●' : '▬'}</div>
+                <div>
+                    <div style="font-size:1.2rem;font-weight:800;font-family:var(--font-mono);">${formatAmount(d.val)} ${escapeHtml(source.symbol || sourceCode)}</div>
+                    <div style="font-size:0.8rem;color:var(--text-dim);">${escapeHtml(d.name)}</div>
+                </div>
+            </div>
+            <div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:0.8rem;">
+                <div style="color:var(--text-faint);font-size:0.65rem;text-transform:uppercase;margin-bottom:2px;">Gegenwert in ${escapeHtml(targetCode)}</div>
+                <div style="font-size:1.05rem;font-weight:700;color:var(--accent);">${formatRate(converted)} ${escapeHtml(targetInfo.symbol || targetCode)}</div>
+                <div style="font-size:0.7rem;color:var(--text-faint);margin-top:4px;">1 ${escapeHtml(sourceCode)} = ${formatRate(multiplier)} ${escapeHtml(targetCode)}</div>
+            </div>
+        `;
+
+        if (d.type === 'coin') { coinsGrid.appendChild(card); coinCount++; }
+        else { notesGrid.appendChild(card); noteCount++; }
+    });
+
+    if (coinCount === 0) coinsGrid.innerHTML = `<div class="empty" style="grid-column:1/-1;">Keine Münzen definiert.</div>`;
+    if (noteCount === 0) notesGrid.innerHTML = `<div class="empty" style="grid-column:1/-1;">Keine Banknoten definiert.</div>`;
+}
+
+/* ==========================================================================
+   ARCHIVE
+   ========================================================================== */
+function buildArchiveData() {
+    const data = [];
+    for (const [code, info] of Object.entries(CURRENT_CURRENCIES)) {
+        data.push({ code, ...info, typeLabel: 'fiat', isLive: true });
+    }
+    for (const [code, info] of Object.entries(HISTORICAL_CURRENCIES)) {
+        data.push({ code, ...info, typeLabel: 'historical', isLive: false });
+    }
+    for (const [code, info] of Object.entries(customCurrencies)) {
+        data.push({
+            code, name: info.name, country: 'Eigene Währung', symbol: info.symbol || code,
+            typeLabel: 'custom', isLive: true
+        });
+    }
+    return data;
+}
+
+function renderArchive() {
+    const tbody = document.getElementById('archive-tbody');
+    const meta = document.getElementById('archive-meta');
+    if (!tbody) return;
+
+    const search = (document.getElementById('archive-search')?.value || '').toLowerCase().trim();
+    let data = buildArchiveData();
+
+    if (archiveFilter === 'current') data = data.filter(d => d.typeLabel === 'fiat');
+    else if (archiveFilter === 'historical') data = data.filter(d => d.typeLabel === 'historical');
+    else if (archiveFilter === 'custom') data = data.filter(d => d.typeLabel === 'custom');
+
+    if (search) {
+        data = data.filter(d =>
+            d.code.toLowerCase().includes(search) ||
+            d.name.toLowerCase().includes(search) ||
+            (d.country || '').toLowerCase().includes(search)
+        );
+    }
+
+    // Rate-Cache pro Render
+    const rateCache = new Map();
+    for (const d of data) {
+        rateCache.set(d.code, getRateToEUR(d.code));
+    }
+
+    data.sort((a, b) => {
+        let va, vb;
+        switch (archiveSortKey) {
+            case 'rate':
+                va = rateCache.get(a.code); vb = rateCache.get(b.code);
+                va = va === null ? Infinity : va; vb = vb === null ? Infinity : vb;
+                break;
+            case 'inverse':
+                va = rateCache.get(a.code); vb = rateCache.get(b.code);
+                va = va === null ? 0 : 1/va; vb = vb === null ? 0 : 1/vb;
+                break;
+            default:
+                va = (a[archiveSortKey] || '').toString().toLowerCase();
+                vb = (b[archiveSortKey] || '').toString().toLowerCase();
+        }
+        if (va < vb) return archiveSortAsc ? -1 : 1;
+        if (va > vb) return archiveSortAsc ? 1 : -1;
+        return 0;
+    });
+
+    tbody.innerHTML = '';
+    data.forEach(d => {
+        const rate = rateCache.get(d.code);
+        const inverse = rate ? 1/rate : null;
+
+        let badgeClass = 'badge-fiat';
+        let badgeLabel = 'Live';
+        if (d.typeLabel === 'historical') { badgeClass = 'badge-hist'; badgeLabel = 'Fix (hist.)'; }
+        else if (d.typeLabel === 'custom') { badgeClass = 'badge-custom'; badgeLabel = 'Eigene'; }
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="font-weight:700;color:var(--accent);">${escapeHtml(d.code)}</td>
+            <td><span style="color:var(--text);font-weight:600;">${escapeHtml(d.name)}</span></td>
+            <td style="color:var(--text-dim);font-size:0.78rem;">${escapeHtml(d.country || '')}</td>
+            <td><span class="badge ${badgeClass}">${badgeLabel}</span>${d.pegged ? `<span class="badge badge-pegged" style="margin-left:4px;">→ ${escapeHtml(d.pegged)}</span>` : ''}</td>
+            <td style="font-weight:600;">${rate !== null ? '1 EUR = ' + formatRate(rate) + ' ' + escapeHtml(d.symbol || '') : '—'}</td>
+            <td style="color:var(--text-dim);">${inverse !== null ? '1 ' + escapeHtml(d.code) + ' = ' + formatRate(inverse) + ' EUR' : '—'}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-faint);">Keine Einträge gefunden.</td></tr>`;
+    }
+
+    if (meta) {
+        const liveCount = data.filter(d => d.isLive && d.typeLabel !== 'custom').length;
+        meta.textContent = `${data.length} Einträge · ${liveCount} mit Live-Kurs · Sortierung: ${archiveSortKey} ${archiveSortAsc ? '↑' : '↓'}`;
+    }
+
+    ['all', 'current', 'historical', 'custom'].forEach(f => {
+        const btn = document.getElementById(`filter-${f}`);
+        if (btn) btn.classList.toggle('btn-primary', archiveFilter === f);
+    });
+}
+
+function setArchiveFilter(filter) {
+    archiveFilter = filter;
+    renderArchive();
+}
+
+function sortArchive(key) {
+    if (archiveSortKey === key) {
+        archiveSortAsc = !archiveSortAsc;
+    } else {
+        archiveSortKey = key;
+        archiveSortAsc = true;
+    }
+    renderArchive();
+}
+
+/* ==========================================================================
+   TABS
+   ========================================================================== */
+function switchTab(tabId) {
+    document.querySelectorAll('.tab').forEach(btn => {
+        const active = btn.dataset.tab === tabId;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    document.querySelectorAll('.panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === `panel-${tabId}`);
+    });
+    if (tabId === 'inspector') renderDenominations();
+    if (tabId === 'archive') renderArchive();
+}
+
+/* ==========================================================================
+   PERSISTENCE
+   ========================================================================== */
+const saveStateDebounced = debounce(() => {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            customCurrencies,
+            matrixRows,
+            matrixBaseCode,
+            matrixBaseAmount,
+            builderDenominations
+        }));
+    } catch (e) {
+        console.warn('[AETHERIS] State-Persistenz fehlgeschlagen:', e);
+        toast('Speichern fehlgeschlagen (Speicher voll?)', 'error');
+    }
+}, 400);
+
+function saveState() { saveStateDebounced(); }
+
+function loadState() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+
+        if (data.customCurrencies && typeof data.customCurrencies === 'object' && !Array.isArray(data.customCurrencies)) {
+            for (const [code, c] of Object.entries(data.customCurrencies)) {
+                if (c && typeof c === 'object' && c.name && c.anchorCode && typeof c.pegRate === 'number' && Array.isArray(c.denominations)) {
+                    customCurrencies[code] = c;
+                }
+            }
+        }
+
+        // Matrix: neue Struktur (Array von Codes)
+        if (Array.isArray(data.matrixRows)) {
+            // Alte Struktur (Objekte mit .curr) migrieren
+            if (data.matrixRows.length > 0 && typeof data.matrixRows[0] === 'object' && data.matrixRows[0].curr) {
+                matrixRows = data.matrixRows.map(r => r.curr).filter(c => c);
+            } else {
+                matrixRows = data.matrixRows.filter(c => typeof c === 'string');
+            }
+        }
+
+        if (typeof data.matrixBaseCode === 'string') matrixBaseCode = data.matrixBaseCode;
+        if (typeof data.matrixBaseAmount === 'string') matrixBaseAmount = data.matrixBaseAmount;
+
+        if (Array.isArray(data.builderDenominations)) {
+            builderDenominations = data.builderDenominations.filter(d => d && d.type && typeof d.val === 'number');
+        }
+    } catch (e) {
+        console.warn('[AETHERIS] State-Laden fehlgeschlagen:', e);
+    }
+}
+
+/* ==========================================================================
+   EXPORT / IMPORT
+   ========================================================================== */
+function exportData() {
+    const payload = {
+        app: 'AETHERIS_V5.1',
+        exportedAt: new Date().toISOString(),
+        customCurrencies,
+        matrixRows,
+        matrixBaseCode,
+        matrixBaseAmount,
+        builderDenominations
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `aetheris-backup-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast('Export erstellt.', 'success');
+}
+
+function importData(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (!data || typeof data !== 'object' || Array.isArray(data)) {
+                throw new Error('Kein gültiges JSON-Objekt.');
+            }
+
+            const hasCustom = data.customCurrencies && typeof data.customCurrencies === 'object';
+            const hasMatrix = Array.isArray(data.matrixRows);
+            if (!hasCustom && !hasMatrix) {
+                throw new Error('Keine erwarteten Daten gefunden.');
+            }
+
+            const replace = await confirmDialog('Import', 'Bestehende Daten überschreiben? (Abbrechen = Zusammenführen)');
+
+            if (replace) {
+                customCurrencies = {};
+                matrixRows = [];
+                matrixBaseCode = null;
+                matrixBaseAmount = '';
+                builderDenominations = [];
+            }
+
+            if (hasCustom) {
+                for (const [code, c] of Object.entries(data.customCurrencies)) {
+                    if (c && typeof c === 'object' && c.name && c.anchorCode && typeof c.pegRate === 'number' && Array.isArray(c.denominations)) {
+                        customCurrencies[code] = c;
+                    }
+                }
+            }
+            if (hasMatrix) {
+                const imported = data.matrixRows.map(r => {
+                    if (typeof r === 'string') return r;
+                    if (r && r.curr) return r.curr;
+                    return null;
+                }).filter(c => c);
+                if (replace) {
+                    matrixRows = imported;
+                } else {
+                    imported.forEach(c => { if (!matrixRows.includes(c)) matrixRows.push(c); });
+                }
+            }
+            if (typeof data.matrixBaseCode === 'string') {
+                matrixBaseCode = data.matrixBaseCode;
+            }
+            if (typeof data.matrixBaseAmount === 'string') {
+                matrixBaseAmount = data.matrixBaseAmount;
+            }
+            if (Array.isArray(data.builderDenominations)) {
+                builderDenominations = data.builderDenominations.filter(d => d && d.type && typeof d.val === 'number');
+            }
+
+            saveState();
+            populateAllSelects();
+            renderMatrix();
+            renderCustomCurrencies();
+            renderBuilderTable();
+            renderDenominations();
+            renderArchive();
+            toast('Import erfolgreich.', 'success');
+        } catch (err) {
+            toast('Import fehlgeschlagen: ' + err.message, 'error');
+        } finally {
+            event.target.value = '';
+        }
+    };
+    reader.readAsText(file);
+}
+
+/* ==========================================================================
+   REFRESH
+   ========================================================================== */
+function populateAllSelects() {
+    populateFoundrySelect();
+    populateInspectorSelects();
+}
+
+function refreshAllViews() {
+    renderMatrix();
+    renderCustomCurrencies();
+    renderDenominations();
+    renderArchive();
+    updateFoundryPreview();
+}
+
+/* ==========================================================================
+   INIT
+   ========================================================================== */
+document.addEventListener('DOMContentLoaded', () => {
+    loadState();
+    loadPersistedRates();
+    populateAllSelects();
+    renderMatrix();
+    renderCustomCurrencies();
+    renderBuilderTable();
+    renderDenominations();
+    renderArchive();
+    updateFoundryPreview();
+
+    if (Object.keys(liveRates).length <= 1) {
+        fetchLiveRates();
+    }
+
+    setInterval(() => {
+        if (document.visibilityState === 'visible') {
+            fetchLiveRates();
+        }
+    }, 5 * 60 * 1000);
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            const age = Date.now() - ratesTimestamp;
+            if (age > RATES_MAX_AGE_MS && Object.keys(liveRates).length > 1) {
+                fetchLiveRates();
+            }
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            ['confirm-dialog', 'add-currency-dialog'].forEach(id => {
+                const d = document.getElementById(id);
+                if (d && d.open) d.close();
+            });
+        }
+    });
+});
+</script>
+</body>
+</html>
